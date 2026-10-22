@@ -35,7 +35,7 @@ jobs:
       release: ${{ steps.v.outputs.release }}
       prerelease: ${{ steps.v.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0          # tags and history for git describe
 
@@ -52,7 +52,9 @@ jobs:
             release=true
             case "$ver" in *-*) pre=true ;; *) pre=false ;; esac
           else
-            ver=$(git describe --tags --match 'v[0-9]*' 2>/dev/null | sed 's/^v//')
+            # no tag yet -> git describe exits 128; "|| true" keeps pipefail from killing the job
+            ver=$(git describe --tags --match 'v[0-9]*' 2>/dev/null || true)
+            ver="${ver#v}"
             [ -n "$ver" ] || ver="0.0.0-dev+$(git rev-parse --short HEAD)"
             release=false
             pre=false
@@ -76,13 +78,13 @@ jobs:
     env:
       FW_VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           path: ${{ env.SKETCH }}   # arduino-cli: sketch folder must match the .ino
 
       - uses: arduino/setup-arduino-cli@v2
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.arduino15
           key: arduino15-esp32-${{ env.ESP32_CORE }}
@@ -178,7 +180,7 @@ jobs:
 
           ls -l "$d"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ env.PKG }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           path: dist/${{ matrix.target }}/*
@@ -193,9 +195,9 @@ jobs:
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: dist
           merge-multiple: true
@@ -232,7 +234,7 @@ jobs:
           \`\`\`
           EOF
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           name: v${{ env.VERSION }}
           body_path: notes.md
